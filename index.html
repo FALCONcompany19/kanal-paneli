@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="tr" style="color-scheme:dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F1115">
+<title>Kanal Paneli</title>
+<meta name="description" content="YouTube kanalın için ücretsiz, açık kaynak istatistik paneli. Kendi API anahtarınla çalışır.">
+<meta name="theme-color" content="#0f1115">
+<style>
+:root{
+  --bg:#0E1014; --side:#12151B; --card:#171A21; --card2:#1F232C; --card3:#262B36;
+  --ink:#ECEDF1; --muted:#949BA8; --dim:#6C7381; --line:#272C37;
+  --red:#FF4D47; --red2:#3A1D21; --green:#3DDC84; --green2:#14301F; --amber:#F5B544; --amber2:#33270F;
+  --blue:#5B8CFF; --blue2:#1C2747; --purple:#B07CFF; --purple2:#2A1F45; --cyan:#3CC9E0;
+  --r:16px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card2);color:var(--ink);border-radius:10px;padding:8px 14px;transition:.15s}
+button:hover{border-color:#3A4150;background:var(--card3)}
+button.primary{background:var(--red);border-color:var(--red);color:#fff;font-weight:600}
+button.primary:hover{filter:brightness(1.08)}
+button.ghost{background:transparent}
+button:disabled{opacity:.55;cursor:wait}
+input,select{font:inherit;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--card2);color:var(--ink)}
+input:focus,select:focus{outline:2px solid #3A4150;outline-offset:0}
+
+/* ---------- layout ---------- */
+.app{display:grid;grid-template-columns:232px 1fr;min-height:100vh}
+.side{background:var(--side);border-right:1px solid var(--line);padding:18px 12px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:4px}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 8px 18px}
+.brand .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--red),#FF8A3D);display:grid;place-items:center;font-weight:800;color:#fff}
+.brand b{font-size:16px;display:block} .brand span{font-size:11.5px;color:var(--muted)}
+.nav a{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:11px;text-decoration:none;color:var(--muted);font-weight:600;position:relative}
+.nav a:hover{background:var(--card);color:var(--ink)}
+.nav a.on{background:var(--card2);color:var(--ink)}
+.nav a.on::before{content:"";position:absolute;left:-12px;top:10px;bottom:10px;width:3px;border-radius:3px;background:var(--red)}
+.nav .ic{width:20px;text-align:center;font-size:17px}
+.nav .cnt{margin-left:auto;background:var(--amber);color:#1A1300;font-size:11px;font-weight:800;border-radius:999px;padding:1px 7px}
+.side .alt{margin-top:auto;font-size:11.5px;color:var(--dim);padding:8px}
+main{min-width:0}
+.top{display:flex;align-items:center;gap:14px;padding:16px 26px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(14,16,20,.88);backdrop-filter:blur(10px);z-index:5}
+.top img{width:42px;height:42px;border-radius:50%;background:var(--card2)}
+.top h1{margin:0;font-size:18px} .top .sub{font-size:12.5px;color:var(--muted)}
+.top .sp{flex:1}
+.iconbtn{position:relative;width:42px;height:42px;padding:0;border-radius:12px;font-size:18px;display:grid;place-items:center}
+.iconbtn .dot{position:absolute;top:-4px;right:-4px;background:var(--amber);color:#1A1300;font-size:11px;font-weight:800;border-radius:999px;padding:1px 6px;border:2px solid var(--bg)}
+.view{padding:22px 26px 90px;max-width:1240px}
+.ttl{display:flex;align-items:flex-end;gap:12px;margin:2px 0 16px;flex-wrap:wrap}
+.ttl h2{margin:0;font-size:22px} .ttl p{margin:0;color:var(--muted);font-size:13.5px}
+.ttl .sp{flex:1}
+
+/* ---------- cards ---------- */
+.grid{display:grid;gap:14px}
+.g4{grid-template-columns:repeat(4,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g2{grid-template-columns:repeat(2,1fr)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;min-width:0}
+.card h3{margin:0 0 12px;font-size:15px;display:flex;align-items:center;gap:8px}
+.card h3 .sp{flex:1} .card h3 small{font-weight:500;color:var(--muted);font-size:12px}
+.kpi .l{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:6px}
+.kpi .v{font-size:30px;font-weight:800;margin-top:4px;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.kpi .d{font-size:12.5px;color:var(--muted);margin-top:2px;display:flex;gap:10px;flex-wrap:wrap}
+.up{color:var(--green)!important;font-weight:700} .down{color:var(--red)!important;font-weight:700}
+.muted{color:var(--muted)} .small{font-size:12.5px} .tiny{font-size:11.5px}
+.empty{color:var(--muted);font-size:13.5px;padding:18px 4px;text-align:center}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-size:12.5px;margin:0 6px 6px 0}
+.chip b{color:var(--ink)}
+.tag{display:inline-block;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:999px;margin-right:6px;letter-spacing:.03em;vertical-align:1px}
+.tag.s{background:var(--red2);color:var(--red)} .tag.u{background:var(--blue2);color:var(--blue)}
+.perf{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;margin-left:6px;vertical-align:1px}
+.perf.p3{background:#3A1A10;color:#FF8A3D} .perf.p2{background:var(--green2);color:var(--green)} .perf.p0{background:var(--card3);color:var(--muted)}
+.yeni{display:inline-block;background:var(--amber);color:#1A1300;font-size:11px;font-weight:800;padding:1px 7px;border-radius:999px;margin-left:6px;vertical-align:2px}
+
+/* progress */
+.bar{height:10px;background:var(--card3);border-radius:999px;overflow:hidden;position:relative}
+.bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--red),#FF8A3D);transition:width .6s}
+.bar.g i{background:linear-gradient(90deg,#1FBF6A,var(--green))}
+.bar.b i{background:linear-gradient(90deg,#4570E8,var(--cyan))}
+.bar.p i{background:linear-gradient(90deg,#8A55F0,var(--purple))}
+.bar.a i{background:linear-gradient(90deg,#E39A22,var(--amber))}
+
+/* goals */
+.goal{display:flex;flex-direction:column;gap:8px}
+.goal .hd{display:flex;align-items:center;gap:10px}
+.goal .em{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-size:20px;background:var(--card2);flex:none}
+.goal .nm{font-weight:700} .goal .nm small{display:block;font-weight:500;color:var(--muted);font-size:12px}
+.goal .pc{margin-left:auto;font-weight:800;font-size:18px;font-variant-numeric:tabular-nums}
+.goal .ft{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;color:var(--muted);flex-wrap:wrap}
+.goal.done .pc{color:var(--green)}
+.st{font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px}
+.st.ok{background:var(--green2);color:var(--green)} .st.warn{background:var(--amber2);color:var(--amber)} .st.bad{background:var(--red2);color:var(--red)} .st.done{background:var(--green2);color:var(--green)}
+.del{border:0;background:none;color:var(--dim);padding:2px 6px;font-size:16px} .del:hover{color:var(--red);background:none}
+.ladder{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+.ladder span{font-size:11px;padding:2px 8px;border-radius:999px;background:var(--card2);color:var(--dim);border:1px solid var(--line)}
+.ladder span.ok{background:var(--green2);color:var(--green);border-color:transparent}
+.ladder span.nx{color:var(--ink);border-color:#4A5262}
+.badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:10px}
+.badge{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:12px 8px;text-align:center;opacity:.38;filter:grayscale(1)}
+.badge.on{opacity:1;filter:none;border-color:#3A4150;background:linear-gradient(180deg,var(--card3),var(--card2))}
+.badge .e{font-size:26px} .badge b{display:block;font-size:13px;margin-top:4px} .badge small{display:block;color:var(--muted);font-size:11px}
+.form{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.form input[type=number]{width:130px}
+
+/* video list */
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card2)}
+.seg button{border:0;border-radius:0;padding:7px 13px;background:transparent}
+.seg button.on{background:var(--ink);color:#0E1014;font-weight:700}
+.toolbar input[type=search]{flex:1;min-width:150px}
+.vhead,.vrow{display:grid;grid-template-columns:116px 1fr 96px 96px 80px;gap:14px;align-items:center}
+.vhead{color:var(--dim);font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;padding:0 8px 8px}
+.vrow{padding:9px 8px;border-top:1px solid var(--line);cursor:pointer;border-radius:10px}
+.vrow:hover{background:var(--card2)}
+.vrow img{width:116px;height:65px;object-fit:cover;border-radius:9px;background:var(--card2)}
+.vrow .t{font-weight:650;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.vrow .m{color:var(--muted);font-size:12.5px;margin-top:3px}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.num b{display:block;font-size:15px} .num span{font-size:11.5px;color:var(--muted)}
+.mini-list .it{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line);cursor:pointer}
+.mini-list .it:first-child{border-top:0}
+.mini-list img{width:72px;height:40px;object-fit:cover;border-radius:7px;background:var(--card2);flex:none}
+.mini-list .tx{flex:1;min-width:0} .mini-list .tx div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;font-size:13.5px}
+.mini-list .r{text-align:right;font-variant-numeric:tabular-nums;font-weight:700;font-size:13.5px}
+
+/* charts */
+.cb{display:flex;align-items:flex-end;gap:5px;padding-top:4px;border-bottom:1px solid var(--line)}
+.cb .c{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
+.cb .c.clk{cursor:pointer} .cb .c.clk:hover i{filter:brightness(1.2)}
+.cb .c .v{font-size:11px;color:var(--muted);white-space:nowrap;margin-bottom:4px;font-variant-numeric:tabular-nums}
+.cb .c i{display:block;width:72%;max-width:44px;border-radius:6px 6px 2px 2px;transition:height .5s}
+.cbl{display:flex;gap:5px;margin-top:5px}
+.cbl span{flex:1;min-width:0;text-align:center;font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:clip}
+.legend{font-size:12px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin:0 5px -1px 10px}
+.hm{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,14px);gap:4px;overflow-x:auto;padding-bottom:4px}
+.hm div{width:14px;height:14px;border-radius:4px;background:var(--card3)}
+.hm .l1{background:#5A2A2A}.hm .l2{background:#A83A36}.hm .l3{background:var(--red)}
+.ins{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}
+.ins:first-child{border-top:0}
+.ins .e{font-size:20px;width:28px;text-align:center} .ins p{margin:0}
+
+/* comments */
+.cm{display:flex;gap:10px;padding:11px 0;border-top:1px solid var(--line)}
+.cm:first-child{border-top:0}
+.cm img{width:36px;height:36px;border-radius:50%;background:var(--card2);flex:none}
+.cm .a{font-weight:700;font-size:13.5px} .cm .w{color:var(--muted);font-size:12px;font-weight:400}
+.cm p{margin:3px 0 4px;white-space:pre-wrap;word-break:break-word}
+.cm .lk{font-size:12.5px;color:var(--red);text-decoration:none;font-weight:600;margin-right:12px}
+.cm .vt{font-size:12px;color:var(--blue);margin-bottom:2px}
+.words .chip{font-size:13px}
+
+/* bell banner, modal, toast */
+.bell{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--amber2);border:1px solid #7A5C1E;border-radius:var(--r);padding:12px 16px;margin-bottom:16px}
+.bell b{font-size:16px} .bell .sp{flex:1}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.66);display:none;align-items:flex-start;justify-content:center;padding:30px 14px;overflow:auto;z-index:20}
+.modal.on{display:flex}
+.box{background:var(--card);border:1px solid var(--line);border-radius:18px;max-width:780px;width:100%;padding:20px;position:relative}
+.box .x{position:absolute;right:12px;top:10px;border:0;font-size:22px;background:none}
+.box img.big{width:100%;border-radius:12px;max-height:360px;object-fit:cover;background:var(--card2)}
+.box h3{margin:12px 0 4px;font-size:19px}
+.mini{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}
+.mini div{background:var(--card2);border-radius:12px;padding:10px 12px}
+.mini .l{font-size:12px;color:var(--muted)} .mini .v{font-size:20px;font-weight:800}
+.links a{display:inline-block;margin-right:14px;color:var(--red);font-weight:600;text-decoration:none}
+.nv{border-top:1px solid var(--line);padding-top:12px;margin-top:12px} .nv h4{margin:0 0 4px;font-size:15px}
+.toasts{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:10px;z-index:30}
+.toast{background:var(--card3);border:1px solid #3A4150;border-radius:14px;padding:12px 16px;box-shadow:0 10px 30px rgba(0,0,0,.4);max-width:340px;animation:tin .3s ease-out}
+.toast b{display:block}
+@keyframes tin{from{transform:translateY(14px);opacity:0}to{transform:none;opacity:1}}
+.confetti{position:fixed;inset:0;pointer-events:none;z-index:40;overflow:hidden}
+.confetti i{position:absolute;top:-20px;width:10px;height:14px;border-radius:2px;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+.msg{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:22px;margin-top:10px}
+.msg code,code{background:var(--card2);padding:2px 6px;border-radius:6px}
+.err{border-color:#6B2A2A;background:#22161A}
+.uyari{color:#FF8A5C}
+.row-set{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.row-set:first-of-type{border-top:0}
+.row-set .lb{flex:1;min-width:200px} .row-set .lb small{display:block;color:var(--muted)}
+.bottomnav{display:none}
+
+@media (max-width:1050px){ .g4{grid-template-columns:repeat(2,1fr)} .g3{grid-template-columns:1fr 1fr} #g-alt{grid-template-columns:1fr!important} }
+@media (max-width:780px){
+  .app{grid-template-columns:1fr}
+  .side{display:none}
+  .top{padding:12px 14px}
+  .top h1{font-size:16px}
+  .view{padding:16px 14px 100px}
+  .g2,.g3{grid-template-columns:1fr}
+  .kpi .v{font-size:24px}
+  .vhead,.vrow{grid-template-columns:92px 1fr 78px}
+  .vrow img{width:92px;height:52px}
+  .vrow .c2,.vrow .c3,.vhead .c2,.vhead .c3{display:none}
+  .mini{grid-template-columns:repeat(2,1fr)}
+  .bottomnav{display:flex;position:fixed;left:0;right:0;bottom:0;background:rgba(18,21,27,.96);backdrop-filter:blur(10px);border-top:1px solid var(--line);z-index:10;padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+  .bottomnav a{flex:1;text-align:center;text-decoration:none;color:var(--dim);font-size:10.5px;font-weight:700;padding:4px 0;position:relative}
+  .bottomnav a .ic{display:block;font-size:19px;line-height:1.3}
+  .bottomnav a.on{color:var(--ink)}
+  .bottomnav .cnt{position:absolute;top:0;left:55%;background:var(--amber);color:#1A1300;font-size:10px;border-radius:999px;padding:0 5px}
+  .toasts{left:14px;right:14px;bottom:80px}
+  .cb.many .c .v{display:none} .cbl.many span:nth-child(even){visibility:hidden}
+  .cb .c .v{font-size:10px} .cbl span{font-size:10px}
+  .top .lbl,.top .sub .nx{display:none}
+  #yenile{width:42px;height:42px;padding:0;border-radius:12px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><div class="logo" id="logoHarf">K</div><div><b id="markaAd">Kanal Paneli</b><span>YouTube istatistikleri</span></div></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="alt">Veriler YouTube'un resmi API'sinden sadece okunur. Anahtarın sadece bu tarayıcıda saklanır, hiçbir sunucuya gönderilmez.</div>
+  </aside>
+  <main>
+    <div class="top">
+      <img id="avatar" alt="">
+      <div><h1 id="kanalAdi">Kanal Paneli</h1><div class="sub" id="guncel">Yükleniyor…</div></div>
+      <div class="sp"></div>
+      <button class="iconbtn" id="zil" title="Yeni yorumlar">🔔</button>
+      <button class="primary" id="yenile">↻ <span class="lbl">Yenile</span></button>
+    </div>
+    <div class="view" id="view"></div>
+  </main>
+</div>
+<nav class="bottomnav" id="bnav"></nav>
+<div class="modal" id="modal"><div class="box" id="box"></div></div>
+<div class="toasts" id="toasts"></div>
+
+<script>
+/* =====================================================================
+   KANAL PANELİ — YouTube kanal paneli (sadece okuma, API anahtarı ile)
+   Açık kaynak, MIT lisansı. Anahtar ve tüm veriler sadece kullanıcının
+   tarayıcısında (localStorage) saklanır; hiçbir sunucuya gönderilmez.
+   ===================================================================== */
+const API = "https://www.googleapis.com/youtube/v3/";
+const $ = id => document.getElementById(id);
+const fmt = n => Number(n||0).toLocaleString("tr-TR");
+const kisa = n => { n=Number(n||0); const a=Math.abs(n); return a>=1e6?(n/1e6).toLocaleString("tr-TR",{maximumFractionDigits:1})+" Mn":a>=1e3?(n/1e3).toLocaleString("tr-TR",{maximumFractionDigits:1})+" B":String(Math.round(n)); };
+const esc = s => String(s??"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const yuzde = (x,d=1) => "%" + (x*100).toLocaleString("tr-TR",{maximumFractionDigits:d});
+const clamp = (x,a,b) => Math.max(a,Math.min(b,x));
+const GUN = 86400000;
+function gunKey(d){ d=new Date(d); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function sure(iso){ const m=/P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/.exec(iso||"")||[]; return (+m[1]||0)*86400+(+m[2]||0)*3600+(+m[3]||0)*60+(+m[4]||0); }
+const sureYaz = s => s>=3600?`${Math.floor(s/3600)}:${String(Math.floor(s%3600/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`:`${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
+const tarih = d => new Date(d).toLocaleDateString("tr-TR",{day:"numeric",month:"short",year:"numeric"});
+function once(d){ const ms=Date.now()-new Date(d); if(ms<60000) return "az önce"; if(ms<3600000) return Math.floor(ms/60000)+" dk önce"; if(ms<GUN) return Math.floor(ms/3600000)+" saat önce"; const g=Math.floor(ms/GUN); if(g<30) return g+" gün önce"; if(g<365) return Math.floor(g/30)+" ay önce"; return Math.floor(g/365)+" yıl önce"; }
+function gunSonra(g){ if(g==null||!isFinite(g)) return null; if(g<1) return "bugün"; if(g<2) return "yarın"; if(g<60) return Math.ceil(g)+" gün"; if(g<730) return Math.round(g/30)+" ay"; return Math.round(g/365)+" yıl"; }
+const GUNLER = ["Pazar","Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi"];
+
+/* ---------- güvenli depolama ---------- */
+const K = { kayit:"kp_kayit", gorulen:"kp_gorulen_yorum", gecmis:"kp_gecmis", hedef:"kp_hedefler", rozet:"kp_rozetler", ayar:"kp_ayar", anahtar:"kp_api_anahtari", kanal:"kp_kanal" };
+function oku(k,d){ try{ const v=JSON.parse(localStorage.getItem(k)||"null"); return v??d; }catch(e){ return d; } }
+function yaz(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+
+/* ---------- kullanıcı ayarları (anahtar + kanal, sadece bu tarayıcıda) ---------- */
+let API_ANAHTARI = oku(K.anahtar,"") || "";
+let KANAL = oku(K.kanal,"") || "";
+function kanalCoz(x){
+  x=String(x||"").trim();
+  let m=x.match(/youtube\.com\/(@[^\/?#\s]+)/i); if(m) return decodeURIComponent(m[1]);
+  m=x.match(/youtube\.com\/channel\/(UC[\w-]{22})/i); if(m) return m[1];
+  if(/^UC[\w-]{22}$/.test(x)) return x;
+  if(!x) return "";
+  return x.startsWith("@")?x:"@"+x;
+}
+const kanalParam = () => /^UC[\w-]{22}$/.test(KANAL) ? {id:KANAL} : {forHandle:KANAL};
+
+/* ---------- durum ---------- */
+const S = {
+  kanal:null, videolar:[], threads:[], yeniler:[], gorulen:null, onceki:null,
+  gecmis: oku(K.gecmis,{}), hedefler: oku(K.hedef,null), rozetler: oku(K.rozet,null),
+  ayar: Object.assign({aralik:5, ses:true}, oku(K.ayar,{})),
+  sonKontrol:null, otoHata:false, ilk:true, yukleniyor:false, sonBildirilen:0,
+  v:{ filtre:"hepsi", sirala:"izlenme", ara:"" }, yf:"hepsi"
+};
+const ROUTES = [
+  ["genel","🏠","Genel Bakış"],["videolar","🎬","Videolar"],["hedefler","🎯","Hedefler"],
+  ["yorumlar","💬","Yorumlar"],["analiz","📊","Analiz"],["ayarlar","⚙️","Ayarlar"]
+];
+function rota(){ const r=(location.hash||"#genel").slice(1); return ROUTES.some(x=>x[0]===r)?r:"genel"; }
+
+/* ---------- API ---------- */
+async function api(yol, params){
+  const q = new URLSearchParams({...params, key: API_ANAHTARI});
+  const r = await fetch(API + yol + "?" + q.toString());
+  let j=null; try{ j=await r.json(); }catch(e){}
+  if(!r.ok){ const e=new Error(j?.error?.message||("HTTP "+r.status)); e.sebep=j?.error?.errors?.[0]?.reason||""; e.kod=r.status; throw e; }
+  return j;
+}
+
+async function yukle(sessiz){
+  if(S.yukleniyor) return; S.yukleniyor=true;
+  $("yenile").disabled=true; if(!sessiz) $("guncel").textContent="Veriler alınıyor…";
+  try{
+    if(typeof API_ANAHTARI==="undefined" || !API_ANAHTARI.trim()){ kurulumGoster(); return; }
+    if(!KANAL){ kurulumGoster(); return; }
+    const kj = await api("channels",{part:"snippet,statistics,contentDetails",...kanalParam()});
+    if(!kj.items?.length) throw Object.assign(new Error("Kanal bulunamadı: "+KANAL),{sebep:"kanalYok"});
+    const k=kj.items[0];
+    let ids=[], sayfa="";
+    do{ const p=await api("playlistItems",{part:"contentDetails",playlistId:k.contentDetails.relatedPlaylists.uploads,maxResults:50,...(sayfa?{pageToken:sayfa}:{})});
+        ids.push(...p.items.map(i=>i.contentDetails.videoId)); sayfa=p.nextPageToken||""; }while(sayfa && ids.length<1000);
+    let vids=[];
+    for(let i=0;i<ids.length;i+=50){ const v=await api("videos",{part:"snippet,statistics,contentDetails",id:ids.slice(i,i+50).join(",")}); vids.push(...v.items); }
+    S.videolar = vids.map(v=>{ const s=sure(v.contentDetails.duration), th=v.snippet.thumbnails||{};
+      return { id:v.id, baslik:v.snippet.title, tarih:v.snippet.publishedAt, sure:s, shorts:s>0&&s<=180,
+        kapak:(th.medium||th.high||th.default||{}).url||"", kapakBuyuk:(th.maxres||th.high||th.medium||{}).url||"",
+        izlenme:+(v.statistics.viewCount||0), begeni:+(v.statistics.likeCount||0), yorum:+(v.statistics.commentCount||0),
+        yorumKapali:v.statistics.commentCount===undefined }; });
+    S.kanal = { id:k.id, ad:k.snippet.title, avatar:(k.snippet.thumbnails?.default||{}).url,
+      abone:+(k.statistics.subscriberCount||0), izlenme:+(k.statistics.viewCount||0), video:+(k.statistics.videoCount||0), aboneGizli:k.statistics.hiddenSubscriberCount };
+    performansHesapla();
+    if(S.ilk){ S.onceki=oku(K.kayit,null); }
+    yaz(K.kayit,{zaman:Date.now(),abone:S.kanal.abone,izlenme:S.kanal.izlenme,v:Object.fromEntries(S.videolar.map(v=>[v.id,v.izlenme]))});
+    gecmisKaydet();
+    await yorumlariAl();
+    hedefIlkKurulum();
+    rozetKontrol(!S.ilk || S.rozetler!==null);
+    S.ilk=false; S.sonKontrol=Date.now(); S.otoHata=false;
+    ciz(true);
+  }catch(e){
+    if(sessiz && S.kanal){ S.otoHata=true; baslikYaz(); } else hataGoster(e);
+  }finally{ $("yenile").disabled=false; S.yukleniyor=false; }
+}
+
+/* ---------- toplamlar & performans ---------- */
+const topla = (L,f) => L.reduce((a,v)=>a+(f(v)||0),0);
+function medyan(a){ if(!a.length) return 0; const b=[...a].sort((x,y)=>x-y), m=b.length>>1; return b.length%2?b[m]:(b[m-1]+b[m])/2; }
+function performansHesapla(){
+  const ms=medyan(S.videolar.filter(v=>v.shorts).map(v=>v.izlenme))||1, mu=medyan(S.videolar.filter(v=>!v.shorts).map(v=>v.izlenme))||1;
+  S.videolar.forEach(v=>{ v.kat = v.izlenme/(v.shorts?ms:mu); v.gunluk = v.izlenme/Math.max(1,(Date.now()-new Date(v.tarih))/GUN); v.oran = v.izlenme?(v.begeni+v.yorum)/v.izlenme:0; });
+}
+function perfEtiket(v){
+  if(v.kat>=3) return `<span class="perf p3">🔥 ${v.kat.toLocaleString("tr-TR",{maximumFractionDigits:1})}x</span>`;
+  if(v.kat>=1.5) return `<span class="perf p2">⬆ ${v.kat.toLocaleString("tr-TR",{maximumFractionDigits:1})}x</span>`;
+  return "";
+}
+function haftaBasi(){ const d=new Date(); d.setHours(0,0,0,0); const g=(d.getDay()+6)%7; return new Date(d.getTime()-g*GUN); }
+
+/* ---------- geçmiş (günlük kayıt) ---------- */
+function gecmisKaydet(){
+  const g=S.gecmis||{};
+  g[gunKey(Date.now())] = { t:Date.now(), abone:S.kanal.abone, izlenme:S.kanal.izlenme, begeni:topla(S.videolar,v=>v.begeni), yorum:topla(S.videolar,v=>v.yorum), video:S.videolar.length,
+    v:Object.fromEntries(S.videolar.map(v=>[v.id,v.izlenme])) };
+  const anahtar=Object.keys(g).sort(); while(anahtar.length>400) delete g[anahtar.shift()];
+  S.gecmis=g; yaz(K.gecmis,g);
+}
+function gecmisListe(){ return Object.keys(S.gecmis||{}).sort().map(k=>({gun:k,...S.gecmis[k]})); }
+function gunOnce(n){ // n gün önceye en yakın (veya daha eski) kayıt
+  const L=gecmisListe(); const hedef=Date.now()-n*GUN; let best=null;
+  for(const x of L){ if(x.t<=hedef+GUN/2) best=x; }
+  return best;
+}
+function hiz(metrik){ // günlük ortalama artış (son ~7 gün)
+  const L=gecmisListe(); if(L.length<2) return null;
+  const son=L[L.length-1]; let bas=L[0];
+  for(const x of L){ if(son.t-x.t<=7.5*GUN){ bas=x; break; } }
+  const gun=(son.t-bas.t)/GUN; if(gun<0.9) return null;
+  const a=son[metrik], b=bas[metrik]; if(a==null||b==null) return null;
+  return (a-b)/gun;
+}
+function degisim(metrik,gun){ const L=gecmisListe(); if(L.length<2) return null; const eski=gunOnce(gun); const son=L[L.length-1]; if(!eski||eski===son||eski[metrik]==null) return null; return son[metrik]-eski[metrik]; }
+
+/* ---------- yorumlar ---------- */
+async function yorumlariAl(){
+  if(!S.kanal?.id) return;
+  let g=oku(K.gorulen,null); if(!g||!g.zaman||g.v){ g={zaman:Date.now()}; yaz(K.gorulen,g); } S.gorulen=g;
+  try{
+    const c=await api("commentThreads",{part:"snippet,replies",allThreadsRelatedToChannelId:S.kanal.id,maxResults:100,order:"time",textFormat:"plainText"});
+    const T=[], Y=[];
+    for(const t of (c.items||[])){
+      const top=t.snippet.topLevelComment.snippet, vid=t.snippet.videoId||top.videoId||"";
+      const sahip = a => a?.authorChannelId?.value===S.kanal.id;
+      const reps=(t.replies?.comments||[]).map(r=>({id:r.id,yazar:r.snippet.authorDisplayName,foto:r.snippet.authorProfileImageUrl,metin:r.snippet.textDisplay,zaman:r.snippet.publishedAt,sahip:sahip(r.snippet)}));
+      T.push({id:t.snippet.topLevelComment.id||t.id,vid,yazar:top.authorDisplayName,foto:top.authorProfileImageUrl,metin:top.textDisplay,zaman:top.publishedAt,begeni:top.likeCount||0,yanitSay:t.snippet.totalReplyCount||0,sahip:sahip(top),cevaplandi:reps.some(r=>r.sahip),yanitlar:reps});
+      if(new Date(top.publishedAt).getTime()>g.zaman) Y.push({vid,yazar:top.authorDisplayName,foto:top.authorProfileImageUrl,metin:top.textDisplay,zaman:top.publishedAt,yanit:false});
+      for(const r of reps) if(new Date(r.zaman).getTime()>g.zaman) Y.push({vid,yazar:r.yazar,foto:r.foto,metin:r.metin,zaman:r.zaman,yanit:true});
+    }
+    Y.sort((a,b)=>new Date(b.zaman)-new Date(a.zaman));
+    S.threads=T; S.yeniler=Y;
+  }catch(e){ return; }
+  const n=S.yeniler.length;
+  if(n>S.sonBildirilen && !S.ilk) bip();
+  S.sonBildirilen=n;
+  document.title=(n?`(${n}) `:"")+(S.kanal?S.kanal.ad+" · ":"")+"Kanal Paneli";
+}
+async function yorumKontrol(){ if(!S.kanal||S.yukleniyor) return; const once=S.yeniler.length; await yorumlariAl(); if(S.yeniler.length!==once) ciz(false); else zilCiz(); }
+function okunduSay(){ yaz(K.gorulen,{zaman:Date.now()}); S.gorulen=oku(K.gorulen,null); S.yeniler=[]; S.sonBildirilen=0; document.title=(S.kanal?S.kanal.ad+" · ":"")+"Kanal Paneli"; kapat(); ciz(false); }
+function bip(){
+  if(!S.ayar.ses) return;
+  try{ const C=new (window.AudioContext||window.webkitAudioContext)();
+    [0,0.18].forEach((d,i)=>{ const o=C.createOscillator(), g=C.createGain(); o.type="sine"; o.frequency.value=i?1175:880;
+      g.gain.setValueAtTime(0.0001,C.currentTime+d); g.gain.exponentialRampToValueAtTime(0.25,C.currentTime+d+0.02); g.gain.exponentialRampToValueAtTime(0.0001,C.currentTime+d+0.25);
+      o.connect(g).connect(C.destination); o.start(C.currentTime+d); o.stop(C.currentTime+d+0.3); }); }catch(e){}
+}
+
+/* ---------- hedefler & rozetler ---------- */
+const METRIK = {
+  abone:      {ad:"Abone", ikon:"👥", renk:"", al:()=>S.kanal.abone, hiz:"abone"},
+  izlenme:    {ad:"Toplam izlenme", ikon:"👁️", renk:"b", al:()=>S.kanal.izlenme, hiz:"izlenme"},
+  begeni:     {ad:"Toplam beğeni", ikon:"❤️", renk:"", al:()=>topla(S.videolar,v=>v.begeni), hiz:"begeni"},
+  yorum:      {ad:"Toplam yorum", ikon:"💬", renk:"a", al:()=>topla(S.videolar,v=>v.yorum), hiz:"yorum"},
+  video:      {ad:"Video sayısı", ikon:"🎬", renk:"p", al:()=>S.videolar.length, hiz:"video"},
+  tekVideo:   {ad:"Tek videoda izlenme", ikon:"🚀", renk:"b", al:()=>Math.max(0,...S.videolar.map(v=>v.izlenme))},
+  haftaVideo: {ad:"Bu hafta video", ikon:"📅", renk:"p", hafta:true, al:()=>S.videolar.filter(v=>new Date(v.tarih)>=haftaBasi()).length},
+  haftaIzlenme:{ad:"Bu haftaki videoların izlenmesi", ikon:"📈", renk:"b", hafta:true, al:()=>topla(S.videolar.filter(v=>new Date(v.tarih)>=haftaBasi()),v=>v.izlenme)},
+  haftaYorum: {ad:"Bu hafta gelen yorum", ikon:"🗨️", renk:"a", hafta:true, al:()=>S.threads.filter(t=>new Date(t.zaman)>=haftaBasi()&&!t.sahip).length + S.threads.reduce((a,t)=>a+t.yanitlar.filter(r=>!r.sahip&&new Date(r.zaman)>=haftaBasi()).length,0)},
+  haftaAbone: {ad:"Bu hafta kazanılan abone", ikon:"➕", renk:"g", hafta:true, al:()=>{ const b=haftaKaydi(); return b?S.kanal.abone-b.abone:0; }}
+};
+function haftaKaydi(){ const hb=haftaBasi().getTime(); const L=gecmisListe(); let r=null; for(const x of L){ if(x.t>=hb-GUN/2){ r=x; break; } } return r; }
+const MERDIVEN = {
+  abone:[10,25,50,100,250,500,1000,2500,5000,10000,25000,50000,100000,250000,500000,1000000],
+  izlenme:[1000,5000,10000,25000,50000,100000,250000,500000,1000000,2500000,5000000,10000000],
+  begeni:[100,250,500,1000,2500,5000,10000,25000,50000,100000],
+  yorum:[10,25,50,100,250,500,1000,2500,5000,10000],
+  video:[10,25,50,100,200,365,500,1000],
+  tekVideo:[1000,5000,10000,25000,50000,100000,250000,500000,1000000]
+};
+function sonrakiAdim(m){ const val=METRIK[m].al(); const L=MERDIVEN[m]; return L.find(x=>x>val) ?? null; }
+function hedefIlkKurulum(){
+  if(S.hedefler) return;
+  const H=[["abone",100],["begeni",1000],["haftaYorum",10],["haftaVideo",14]];
+  S.hedefler=H.map(([m,h],i)=>{ if(!METRIK[m].hafta && METRIK[m].al()>=h) h=sonrakiAdim(m)||h; return {id:Date.now()+i,metrik:m,hedef:h,son:null,olus:Date.now()}; });
+  yaz(K.hedef,S.hedefler);
+}
+function rozetKontrol(kutla){
+  const ilk = S.rozetler===null; const R=S.rozetler||{};
+  const yeni=[];
+  for(const [m,L] of Object.entries(MERDIVEN)){ const val=METRIK[m].al();
+    for(const x of L){ const key=m+":"+x; if(val>=x && !R[key]){ R[key]= ilk?"once":Date.now(); if(!ilk) yeni.push([m,x]); } } }
+  // özel hedefler
+  for(const h of (S.hedefler||[])){ const val=METRIK[h.metrik].al(); const key="h:"+h.id+(METRIK[h.metrik].hafta?":"+gunKey(haftaBasi()):"");
+    if(val>=h.hedef && !R[key]){ R[key]=Date.now(); if(!ilk) yeni.push([h.metrik,h.hedef,true]); } }
+  S.rozetler=R; yaz(K.rozet,R);
+  if(kutla && yeni.length){ konfeti(); bip(); yeni.slice(0,3).forEach(([m,x,oz])=>toast(`${METRIK[m].ikon} Hedefe ulaştın!`,`${fmt(x)} ${METRIK[m].ad.toLocaleLowerCase("tr-TR")}${oz?" (kendi hedefin)":""} 🎉`)); }
+}
+function hedefDurum(h){
+  const M=METRIK[h.metrik], val=M.al(), p=clamp(val/h.hedef,0,1), kalan=Math.max(0,h.hedef-val);
+  let st=null, eta=null, notu="";
+  if(val>=h.hedef){ st=["done","Tamamlandı 🎉"]; }
+  else {
+    const r = M.hafta ? null : (M.hiz?hiz(M.hiz):null);
+    if(M.hafta){
+      const gecen=(Date.now()-haftaBasi())/GUN, kalanGun=Math.max(0.01,7-gecen);
+      const beklenen=h.hedef*clamp(gecen/7,0,1);
+      notu=`Hafta bitimine ${Math.ceil(kalanGun)} gün`;
+      st = val>=beklenen ? ["ok","Yolunda"] : (val>=beklenen*0.6 ? ["warn","Biraz geride"] : ["bad","Geride"]);
+    } else if(h.son){
+      const kalanGun=(new Date(h.son+"T23:59:59")-Date.now())/GUN;
+      if(kalanGun<=0){ st=["bad","Süre doldu"]; }
+      else { const gerekli=kalan/kalanGun; notu=`Günde ${fmt(Math.ceil(gerekli))} gerekiyor`;
+        st = r==null ? ["warn","Hız ölçülüyor"] : (r>=gerekli ? ["ok","Yolunda"] : (r>=gerekli*0.6?["warn","Biraz geride"]:["bad","Geride"])); }
+    }
+    if(r!=null && r>0) eta=kalan/r;
+  }
+  return {val,p,kalan,st,eta,notu,r:M.hiz?hiz(M.hiz):null};
+}
+
+/* ---------- toast & konfeti ---------- */
+function toast(b,t){ const d=document.createElement("div"); d.className="toast"; d.innerHTML=`<b>${esc(b)}</b><span class="small muted">${esc(t)}</span>`; $("toasts").appendChild(d); setTimeout(()=>d.remove(),6500); }
+function konfeti(){ const c=document.createElement("div"); c.className="confetti"; const R=["#FF4D47","#F5B544","#3DDC84","#5B8CFF","#B07CFF","#3CC9E0"];
+  for(let i=0;i<90;i++){ const e=document.createElement("i"); e.style.left=Math.random()*100+"vw"; e.style.background=R[i%R.length]; e.style.animationDuration=(2+Math.random()*2.2)+"s"; e.style.animationDelay=(Math.random()*0.6)+"s"; e.style.transform=`rotate(${Math.random()*360}deg)`; c.appendChild(e); }
+  document.body.appendChild(c); setTimeout(()=>c.remove(),5200); }
+
+/* ---------- grafikler ---------- */
+function barChart(D,o){
+  o=Object.assign({h:200,deger:true},o||{});
+  if(!D.length) return `<div class="empty">Veri yok</div>`;
+  const max=Math.max(...D.map(d=>d.v),1), cok=D.length>8?" many":"";
+  const kol=D.map(d=>{ const p=d.v>0?Math.max(2,d.v/max*86):0;
+    return `<div class="c${d.id?" clk":""}" ${d.id?`data-id="${d.id}"`:""} title="${esc((d.t||d.l)+" — "+fmt(d.v))}">${o.deger?`<span class="v">${d.vl??kisa(d.v)}</span>`:""}<i style="height:${p}%;background:${d.c||"#FF4D47"}"></i></div>`; }).join("");
+  return `<div class="cb${cok}" style="height:${o.h}px">${kol}</div><div class="cbl${cok}">${D.map(d=>`<span>${esc(d.l)}</span>`).join("")}</div>`;
+}
+function hbar(D){ // yatay çubuklar
+  const max=Math.max(...D.map(d=>d.v),1);
+  return D.map(d=>`<div style="margin:9px 0"><div class="small" style="display:flex;justify-content:space-between;gap:8px"><span>${d.l}</span><b>${d.vl??fmt(d.v)}</b></div>
+    <div class="bar ${d.c||""}" style="height:8px;margin-top:4px"><i style="width:${(d.v/max*100).toFixed(1)}%"></i></div>${d.n?`<div class="tiny muted" style="margin-top:2px">${d.n}</div>`:""}</div>`).join("");
+}
+
+/* ---------- çizim ---------- */
+function navCiz(){
+  const r=rota(), n=S.yeniler.length;
+  const item = ([k,ic,ad]) => `<a href="#${k}" class="${r===k?"on":""}"><span class="ic">${ic}</span>${ad}${k==="yorumlar"&&n?`<span class="cnt">${n}</span>`:""}</a>`;
+  $("nav").innerHTML = ROUTES.map(item).join("");
+  $("bnav").innerHTML = ROUTES.map(([k,ic,ad])=>`<a href="#${k}" class="${r===k?"on":""}"><span class="ic">${ic}</span>${ad.split(" ")[0]}${k==="yorumlar"&&n?`<span class="cnt">${n}</span>`:""}</a>`).join("");
+}
+function zilCiz(){ const n=S.yeniler.length; $("zil").innerHTML=`🔔${n?`<span class="dot">${n}</span>`:""}`; navCiz(); }
+function baslikYaz(){
+  const sk=S.sonKontrol?new Date(S.sonKontrol).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}):"–";
+  const ar=S.ayar.aralik; const kalan=S.sonKontrol&&ar?Math.max(0,Math.ceil((S.sonKontrol+ar*60000-Date.now())/60000)):null;
+  $("guncel").innerHTML=`Son kontrol: ${sk}`+(ar?(kalan!=null?`<span class="nx"> · sonraki ${kalan<=0?"birazdan":kalan+" dk içinde"}</span>`:""):`<span class="nx"> · otomatik güncelleme kapalı</span>`)+(S.otoHata?` · <span class="uyari">son güncelleme başarısız</span>`:"");
+}
+function ciz(sayfaBasa){
+  if(!S.kanal) return;
+  $("kanalAdi").textContent=S.kanal.ad; if(S.kanal.avatar) $("avatar").src=S.kanal.avatar; $("markaAd").textContent=S.kanal.ad; $("logoHarf").textContent=(S.kanal.ad.trim()[0]||"K").toLocaleUpperCase("tr-TR");
+  baslikYaz(); zilCiz();
+  const y=window.scrollY;
+  const r=rota();
+  const V={genel:vGenel,videolar:vVideolar,hedefler:vHedefler,yorumlar:vYorumlar,analiz:vAnaliz,ayarlar:vAyarlar}[r];
+  $("view").innerHTML = V();
+  baglaGenel();
+  if(!sayfaBasa) window.scrollTo(0,y);
+}
+function zilBanner(){ const n=S.yeniler.length; if(!n) return "";
+  return `<div class="bell">🔔 <b>${n} yeni yorum</b><span class="small muted">${new Set(S.yeniler.map(x=>x.vid)).size} videoda</span><span class="sp"></span><button class="primary" data-act="yeniGoster">Göster</button><button data-act="okundu">Okundu say</button></div>`; }
+function dlt(n,son){ if(n==null) return ""; if(n>0) return `<span class="up">+${fmt(n)}</span> <span>${son}</span>`; if(n<0) return `<span class="down">${fmt(n)}</span> <span>${son}</span>`; return `<span>${son}: değişim yok</span>`; }
+
+/* ===== GENEL BAKIŞ ===== */
+function vGenel(){
+  const k=S.kanal, V=S.videolar, o=S.onceki;
+  const bg=topla(V,v=>v.begeni), yr=topla(V,v=>v.yorum);
+  const kp=(l,ic,val,m)=>`<div class="card kpi"><div class="l">${ic} ${l}</div><div class="v">${val}</div><div class="d">${m?dlt(degisim(m,1),"son 24 saat"):""}${m&&degisim(m,7)!=null&&gecmisListe().length>=3?` · ${dlt(degisim(m,7),"7 gün")}`:""}${m&&degisim(m,1)==null?`<span>günlük takip başladı</span>`:""}</div></div>`;
+  let h = zilBanner();
+  h+=`<div class="grid g4">${kp("Abone","👥",k.aboneGizli?"Gizli":fmt(k.abone),"abone")}${kp("Toplam izlenme","👁️",fmt(k.izlenme),"izlenme")}${kp("Toplam beğeni","❤️",fmt(bg),"begeni")}${kp("Toplam yorum","💬",fmt(yr),"yorum")}</div>`;
+  // yaklaşan hedefler
+  const hd=(S.hedefler||[]).map(x=>({x,d:hedefDurum(x)})).filter(z=>z.d.p<1).sort((a,b)=>b.d.p-a.d.p).slice(0,3);
+  h+=`<div class="grid g3" style="margin-top:14px">`+ (hd.length?hd.map(({x,d})=>hedefKart(x,d,true)).join(""):`<div class="card"><div class="empty">Aktif hedefin yok. <a href="#hedefler">Hedef ekle →</a></div></div>`) +`</div>`;
+  // günlük grafik
+  const L=gecmisListe();
+  let gunluk="";
+  if(L.length>=2){
+    const D=[]; for(let i=1;i<L.length;i++){ const a=L[i-1],b=L[i]; D.push({l:new Date(b.t).toLocaleDateString("tr-TR",{day:"numeric",month:"numeric"}),v:Math.max(0,b.izlenme-a.izlenme),t:b.gun,c:"#5B8CFF"}); }
+    const A=[]; for(let i=1;i<L.length;i++){ const a=L[i-1],b=L[i]; A.push({l:new Date(b.t).toLocaleDateString("tr-TR",{day:"numeric",month:"numeric"}),v:Math.max(0,b.abone-a.abone),t:b.gun,c:"#3DDC84"}); }
+    gunluk=`<div class="grid g2" style="margin-top:14px"><div class="card"><h3>📈 Günlük yeni izlenme<span class="sp"></span><small>son ${Math.min(30,D.length)} gün</small></h3>${barChart(D.slice(-30),{h:180})}</div>
+      <div class="card"><h3>👥 Günlük yeni abone<span class="sp"></span><small>son ${Math.min(30,A.length)} gün</small></h3>${barChart(A.slice(-30),{h:180})}</div></div>`;
+  } else gunluk=`<div class="card" style="margin-top:14px"><h3>📈 Günlük grafik</h3><div class="empty">Panel her gün kanalının kaydını tutuyor. Yarından itibaren burada günlük yeni izlenme ve abone grafiği görünecek.</div></div>`;
+  h+=gunluk;
+  // son 15 video + yükselenler
+  const son15=[...V].sort((a,b)=>new Date(b.tarih)-new Date(a.tarih)).slice(0,15).reverse();
+  const prev = gunOnce(1) && gunOnce(1)!==L[L.length-1] ? gunOnce(1).v : (o?.v||null);
+  let yuk=[];
+  if(prev){ yuk=V.map(v=>({v,f:v.izlenme-(prev[v.id]??v.izlenme)})).filter(x=>x.f>0).sort((a,b)=>b.f-a.f).slice(0,6); }
+  const yukHtml = yuk.length ? yuk.map(({v,f})=>`<div class="it" data-vid="${v.id}"><img src="${esc(v.kapak)}" alt="" loading="lazy"><div class="tx"><div>${esc(v.baslik)}</div><span class="tiny muted">${v.shorts?"Shorts":"Uzun"} · ${once(v.tarih)}</span></div><div class="r up">+${fmt(f)}</div></div>`).join("")
+    : `<div class="empty">Hangi videonun yükseldiğini görmek için panel en az bir kez daha açılmalı.</div>`;
+  h+=`<div class="grid" style="grid-template-columns:2fr 1fr;margin-top:14px" id="g-alt">
+    <div class="card"><h3>🎬 Son 15 videonun izlenmesi</h3>${barChart(son15.map(v=>({l:new Date(v.tarih).toLocaleDateString("tr-TR",{day:"numeric",month:"numeric"}),v:v.izlenme,t:v.baslik,id:v.id,c:v.shorts?"#FF4D47":"#5B8CFF"})),{h:220})}
+      <div class="legend"><i style="background:#FF4D47"></i>Shorts <i style="background:#5B8CFF"></i>Uzun video · çubuğa tıklayınca detay açılır</div></div>
+    <div class="card"><h3>🚀 Yükselen videolar<span class="sp"></span><small>${prev&&gunOnce(1)&&gunOnce(1)!==L[L.length-1]?"son 24 saat":"son açılıştan beri"}</small></h3><div class="mini-list">${yukHtml}</div></div></div>`;
+  // en iyi 5
+  const top5=[...V].sort((a,b)=>b.izlenme-a.izlenme).slice(0,5);
+  h+=`<div class="grid g2" style="margin-top:14px"><div class="card"><h3>🏆 En çok izlenenler</h3><div class="mini-list">${top5.map((v,i)=>`<div class="it" data-vid="${v.id}"><b style="width:18px;color:var(--muted)">${i+1}</b><img src="${esc(v.kapak)}" alt="" loading="lazy"><div class="tx"><div>${esc(v.baslik)}</div><span class="tiny muted">${tarih(v.tarih)}</span></div><div class="r">${fmt(v.izlenme)}</div></div>`).join("")}</div></div>
+    <div class="card"><h3>💡 Hızlı içgörüler</h3>${icgoruler().slice(0,4).join("")||`<div class="empty">Daha fazla video yüklendikçe içgörüler çıkacak.</div>`}</div></div>`;
+  return h;
+}
+
+/* ===== VİDEOLAR ===== */
+function vVideolar(){
+  const V=S.videolar, sh=V.filter(v=>v.shorts).length;
+  return `<div class="ttl"><h2>🎬 Videolar</h2><p>${V.length} video · ${sh} Shorts · ${V.length-sh} uzun</p><span class="sp"></span><button data-act="csv">⬇ Excel'e aktar (CSV)</button></div>
+  ${zilBanner()}
+  <div class="card"><div class="toolbar">
+    <div class="seg">${[["hepsi","Hepsi"],["shorts","Shorts"],["uzun","Uzun"]].map(([k,t])=>`<button data-f="${k}" class="${S.v.filtre===k?"on":""}">${t}</button>`).join("")}</div>
+    <select id="sirala">${[["izlenme","En çok izlenen"],["tarih","En yeni"],["performans","Performans (kanal ortalamasına göre)"],["gunluk","Günlük ortalama izlenme"],["begeni","En çok beğenilen"],["yorum","En çok yorum alan"],["oran","Etkileşim oranı"],["artis","Son 24 saatte en çok artan"]].map(([v,t])=>`<option value="${v}" ${S.v.sirala===v?"selected":""}>${t}</option>`).join("")}</select>
+    <input type="search" id="ara" placeholder="Videolarda ara…" value="${esc(S.v.ara)}">
+  </div>
+  <div class="vhead"><div></div><div>Video</div><div class="num">İzlenme</div><div class="num c2">Beğeni</div><div class="num c3">Yorum</div></div>
+  <div id="liste"></div>
+  <div class="tiny muted" style="margin-top:10px">🔥 = kanal ortalamasının 3 katından fazla, ⬆ = 1,5 katından fazla izlenme (Shorts kendi arasında, uzun videolar kendi arasında karşılaştırılır). 3 dakikaya kadar olan videolar Shorts sayılır.</div></div>`;
+}
+function listeCiz(){
+  const el=$("liste"); if(!el) return;
+  const L1=gecmisListe(); const prevRec=gunOnce(1); const prev=(prevRec && prevRec!==L1[L1.length-1]?prevRec.v:null)||S.onceki?.v||{};
+  let L=S.videolar.filter(v=>S.v.filtre==="hepsi"||(S.v.filtre==="shorts")===v.shorts);
+  if(S.v.ara.trim()){ const q=S.v.ara.toLocaleLowerCase("tr-TR"); L=L.filter(v=>v.baslik.toLocaleLowerCase("tr-TR").includes(q)); }
+  const art=v=>v.izlenme-(prev[v.id]??v.izlenme);
+  const SR={izlenme:(a,b)=>b.izlenme-a.izlenme,tarih:(a,b)=>new Date(b.tarih)-new Date(a.tarih),performans:(a,b)=>b.kat-a.kat,gunluk:(a,b)=>b.gunluk-a.gunluk,begeni:(a,b)=>b.begeni-a.begeni,yorum:(a,b)=>b.yorum-a.yorum,oran:(a,b)=>b.oran-a.oran,artis:(a,b)=>art(b)-art(a)};
+  L.sort(SR[S.v.sirala]);
+  const yn=id=>S.yeniler.filter(x=>x.vid===id).length;
+  el.innerHTML = L.length ? L.map(v=>`<div class="vrow" data-vid="${v.id}"><img src="${esc(v.kapak)}" alt="" loading="lazy">
+    <div><div class="t">${esc(v.baslik)}${perfEtiket(v)}${yn(v.id)?`<span class="yeni">🔔 ${yn(v.id)} yeni</span>`:""}</div>
+    <div class="m"><span class="tag ${v.shorts?"s":"u"}">${v.shorts?"SHORTS":"UZUN"}</span>${tarih(v.tarih)} · ${once(v.tarih)} · ${sureYaz(v.sure)}</div></div>
+    <div class="num"><b>${fmt(v.izlenme)}</b><span>${art(v)>0?`<span class="up">+${fmt(art(v))}</span>`:"&nbsp;"}</span></div>
+    <div class="num c2"><b>${fmt(v.begeni)}</b><span>${yuzde(v.oran)} etkileşim</span></div>
+    <div class="num c3"><b>${v.yorumKapali?"–":fmt(v.yorum)}</b><span>&nbsp;</span></div></div>`).join("") : `<div class="empty">Bu filtrede video yok.</div>`;
+}
+
+/* ===== HEDEFLER ===== */
+function hedefKart(h,d,kucuk){
+  const M=METRIK[h.metrik];
+  return `<div class="card goal ${d.p>=1?"done":""}">
+    <div class="hd"><div class="em">${M.ikon}</div><div class="nm">${fmt(h.hedef)} ${M.ad.toLocaleLowerCase("tr-TR")}<small>${M.hafta?"Haftalık hedef · her pazartesi sıfırlanır":(h.son?"Son tarih: "+tarih(h.son):"Genel hedef")}</small></div>
+      <div class="pc">${Math.floor(d.p*100)}%</div>${kucuk?"":`<button class="del" title="Hedefi sil" data-del="${h.id}">✕</button>`}</div>
+    <div class="bar ${M.renk}"><i style="width:${(d.p*100).toFixed(1)}%"></i></div>
+    <div class="ft"><span><b style="color:var(--ink)">${fmt(d.val)}</b> / ${fmt(h.hedef)}${d.kalan>0?` · ${fmt(d.kalan)} kaldı`:""}</span>
+      <span>${d.st?`<span class="st ${d.st[0]}">${d.st[1]}</span> `:""}${d.eta!=null?`bu hızla ~${gunSonra(d.eta)}`:(d.notu||(!M.hafta&&d.p<1&&d.r==null?"tahmin için birkaç gün veri gerekiyor":""))}</span></div>
+    ${d.notu&&d.eta!=null?`<div class="tiny muted">${d.notu}</div>`:""}</div>`;
+}
+function vHedefler(){
+  const H=S.hedefler||[];
+  let h=`<div class="ttl"><h2>🎯 Hedefler</h2><p>Kendi hedeflerini koy, ilerlemeni takip et, rozetleri topla.</p></div>`;
+  h+=`<div class="card" style="margin-bottom:14px"><h3>➕ Yeni hedef ekle</h3><div class="form">
+    <input type="number" id="hHedef" min="1" placeholder="Hedef (ör. 100)">
+    <select id="hMetrik">${Object.entries(METRIK).map(([k,m])=>`<option value="${k}">${m.ikon} ${m.ad}</option>`).join("")}</select>
+    <input type="date" id="hSon" title="Son tarih (isteğe bağlı)">
+    <button class="primary" data-act="hEkle">Ekle</button></div>
+    <div class="tiny muted" style="margin-top:8px">Son tarih isteğe bağlı. Koyarsan panel "günde ne kadar gerekiyor" ve "yolunda mısın" hesaplar.</div>
+    <div style="margin-top:10px">${["abone","izlenme","begeni","yorum"].map(m=>{const n=sonrakiAdim(m);return n?`<button class="chip" data-hizli="${m}:${n}">+ ${fmt(n)} ${METRIK[m].ad.toLocaleLowerCase("tr-TR")}</button>`:""}).join("")}</div></div>`;
+  const aktif=H.map(x=>({x,d:hedefDurum(x)}));
+  h+= aktif.length ? `<div class="grid g2">${aktif.map(({x,d})=>hedefKart(x,d,false)).join("")}</div>` : `<div class="card"><div class="empty">Henüz hedef yok. Yukarıdan ekleyebilirsin.</div></div>`;
+  // YPP
+  const sh90=topla(S.videolar.filter(v=>v.shorts && Date.now()-new Date(v.tarih)<90*GUN),v=>v.izlenme);
+  h+=`<div class="card" style="margin-top:14px"><h3>💰 YouTube İş Ortağı Programı (para kazanma)</h3>
+    <div class="grid g2">
+      <div class="goal"><div class="hd"><div class="em">👥</div><div class="nm">1.000 abone</div><div class="pc">${Math.floor(clamp(S.kanal.abone/1000,0,1)*100)}%</div></div><div class="bar g"><i style="width:${clamp(S.kanal.abone/1000,0,1)*100}%"></i></div>
+        <div class="ft"><span>${fmt(S.kanal.abone)} / 1.000${S.kanal.abone<1000?` · ${fmt(1000-S.kanal.abone)} kaldı`:""}</span><span>${(()=>{const r=hiz("abone");return r>0&&S.kanal.abone<1000?"bu hızla ~"+gunSonra((1000-S.kanal.abone)/r):""})()}</span></div></div>
+      <div class="goal"><div class="hd"><div class="em">📱</div><div class="nm">10 milyon Shorts izlenmesi<small>son 90 gün</small></div><div class="pc">${Math.floor(clamp(sh90/1e7,0,1)*100)}%</div></div><div class="bar b"><i style="width:${Math.max(0.5,clamp(sh90/1e7,0,1)*100)}%"></i></div>
+        <div class="ft"><span>≈ ${fmt(sh90)} / 10.000.000</span><span>yaklaşık değer</span></div></div>
+    </div>
+    <div class="tiny muted" style="margin-top:10px">Shorts değeri, son 90 günde yüklenen Shorts'ların toplam izlenmesinden hesaplanan yaklaşık bir sayıdır; kesin değer YouTube Studio'da görünür. Diğer seçenek olan 4.000 saat izlenme süresi hesaba bağlanınca eklenecek. Güncel şartları YouTube Studio → Para Kazanma bölümünden kontrol et.</div></div>`;
+  // merdivenler
+  h+=`<div class="card" style="margin-top:14px"><h3>🪜 Kilometre taşları</h3><div class="grid g3">`+Object.entries(MERDIVEN).map(([m,L])=>{
+    const M=METRIK[m], val=M.al(), nx=L.find(x=>x>val), pv=[...L].reverse().find(x=>x<=val)||0, p=nx?clamp((val-pv)/(nx-pv),0,1):1;
+    const r=M.hiz?hiz(M.hiz):null, eta=nx&&r>0?(nx-val)/r:null;
+    return `<div class="goal"><div class="hd"><div class="em">${M.ikon}</div><div class="nm">${M.ad}<small>şu an ${fmt(val)}</small></div><div class="pc" style="font-size:14px">${nx?"→ "+kisa(nx):"✔"}</div></div>
+      <div class="bar ${M.renk}"><i style="width:${(p*100).toFixed(1)}%"></i></div>
+      <div class="ft"><span>${nx?fmt(nx-val)+" kaldı":"Hepsi tamam!"}</span><span>${eta!=null?"~"+gunSonra(eta):""}</span></div>
+      <div class="ladder">${L.map(x=>`<span class="${val>=x?"ok":(x===nx?"nx":"")}">${kisa(x)}</span>`).join("")}</div></div>`; }).join("")+`</div></div>`;
+  // rozetler
+  const R=S.rozetler||{}; let tumu=[], toplam=0, acik=0;
+  for(const [m,L] of Object.entries(MERDIVEN)){ let kilit=0; for(const x of L){ toplam++; if(R[m+":"+x]){ acik++; tumu.push([m,x]); } else if(kilit<2){ kilit++; tumu.push([m,x]); } } }
+  h+=`<div class="card" style="margin-top:14px"><h3>🏅 Rozetler<span class="sp"></span><small>${acik} / ${toplam} açıldı · her türde sıradaki 2 rozet gösteriliyor</small></h3><div class="badges">`+
+    tumu.map(([m,x])=>{ const t=R[m+":"+x]; return `<div class="badge ${t?"on":""}"><div class="e">${METRIK[m].ikon}</div><b>${fmt(x)}</b><small>${METRIK[m].ad}</small><small>${t?(t==="once"?"✔ açık":"✔ "+new Date(t).toLocaleDateString("tr-TR",{day:"numeric",month:"short"})):"kilitli"}</small></div>`; }).join("")+`</div></div>`;
+  return h;
+}
+
+/* ===== YORUMLAR ===== */
+const DUR = new Set("ve veya ile bir bu şu o da de mi mı mu mü ne ben sen biz siz onlar için ama gibi daha en çok cok çok var yok ki ya evet hayır olarak olan oldu olur olsun her hiç kadar sonra önce şey bunu şunu onu beni seni bana sana niye neden nasıl diye iyi abi abim kanka bro the and you is to of a in it this that ama artık bile daha hem hep ise sadece tam yani zaten şimdi böyle öyle şöyle bende sende video videoyu videolar videoları videosu videonu videonuz".split(" "));
+function vYorumlar(){
+  const T=S.threads, dis=T.filter(t=>!t.sahip);
+  const cvp=dis.filter(t=>!t.cevaplandi);
+  const L = S.yf==="cevapsiz"?cvp:(S.yf==="yeni"?null:dis);
+  let h=`<div class="ttl"><h2>💬 Yorumlar</h2><p>Kanalına gelen en son ${T.length} yorum dizisi</p></div>${zilBanner()}`;
+  // istatistik
+  const son7=dis.filter(t=>Date.now()-new Date(t.zaman)<7*GUN).length;
+  const yazarlar={}; for(const t of dis){ yazarlar[t.yazar]=(yazarlar[t.yazar]||{n:0,foto:t.foto}); yazarlar[t.yazar].n++; }
+  const sadik=Object.entries(yazarlar).sort((a,b)=>b[1].n-a[1].n).slice(0,6);
+  const kel={}; for(const t of dis){ for(let w of t.metin.toLocaleLowerCase("tr-TR").replace(/[^\p{L}\p{N}\s]/gu," ").split(/\s+/)){ if(w.length<3||DUR.has(w)||/^\d+$/.test(w)) continue; kel[w]=(kel[w]||0)+1; } }
+  const kl=Object.entries(kel).filter(x=>x[1]>1).sort((a,b)=>b[1]-a[1]).slice(0,18);
+  h+=`<div class="grid g4" style="margin-bottom:14px">
+    <div class="card kpi"><div class="l">🗨️ Son 7 gün</div><div class="v">${fmt(son7)}</div><div class="d">yeni yorum dizisi</div></div>
+    <div class="card kpi"><div class="l">⏳ Cevaplanmamış</div><div class="v">${fmt(cvp.length)}</div><div class="d">${dis.length?yuzde(1-cvp.length/dis.length,0)+" cevaplandı":"&nbsp;"}</div></div>
+    <div class="card kpi"><div class="l">🔔 Okunmamış</div><div class="v">${fmt(S.yeniler.length)}</div><div class="d">son "okundu"dan beri</div></div>
+    <div class="card kpi"><div class="l">❤️ En beğenilen yorum</div><div class="v" style="font-size:22px">${fmt(Math.max(0,...dis.map(t=>t.begeni)))}</div><div class="d">beğeni</div></div></div>`;
+  h+=`<div class="grid" style="grid-template-columns:2fr 1fr;align-items:start" id="g-alt"><div class="card">
+    <div class="toolbar"><div class="seg">${[["hepsi","Tümü ("+dis.length+")"],["cevapsiz","Cevaplanmamış ("+cvp.length+")"],["yeni","Okunmamış ("+S.yeniler.length+")"]].map(([k,t])=>`<button data-yf="${k}" class="${S.yf===k?"on":""}">${t}</button>`).join("")}</div></div>`;
+  if(S.yf==="yeni"){
+    h+= S.yeniler.length ? S.yeniler.map(x=>yorumHtml({vid:x.vid,yazar:x.yazar,foto:x.foto,metin:x.metin,zaman:x.zaman,yanit:x.yanit})).join("") + `<div style="margin-top:12px"><button class="primary" data-act="okundu">✓ Hepsini okundu say</button></div>` : `<div class="empty">Okunmamış yorum yok 👌</div>`;
+  } else h+= L.length ? L.map(t=>yorumHtml(t)).join("") : `<div class="empty">${S.yf==="cevapsiz"?"Bütün yorumları cevaplamışsın 👏":"Henüz yorum yok."}</div>`;
+  h+=`<div class="tiny muted" style="margin-top:10px">"Cevaplanmamış": altında kanalının bir yanıtı görünmeyen yorumlar. Çok yanıtlı yorumlarda bazen kanalının yanıtı listede görünmeyebilir.</div></div>
+    <div class="grid"><div class="card"><h3>⭐ En çok yorum yapanlar</h3>${sadik.length?`<div class="mini-list">${sadik.map(([a,o])=>`<div class="it" style="cursor:default"><img src="${esc(o.foto)}" style="width:34px;height:34px;border-radius:50%" alt=""><div class="tx"><div>${esc(a)}</div></div><div class="r">${o.n} yorum</div></div>`).join("")}</div>`:`<div class="empty">Veri yok</div>`}</div>
+    <div class="card words"><h3>🔤 Yorumlarda sık geçenler</h3>${kl.length?kl.map(([w,n])=>`<span class="chip">${esc(w)} <b>${n}</b></span>`).join(""):`<div class="empty">Yeterli yorum yok</div>`}</div></div></div>`;
+  return h;
+}
+function yorumHtml(t){
+  const v=S.videolar.find(z=>z.id===t.vid);
+  return `<div class="cm"><img src="${esc(t.foto)}" alt="" loading="lazy"><div style="min-width:0;flex:1">
+    ${v?`<div class="vt">🎬 ${esc(v.baslik)}</div>`:""}
+    <div class="a">${esc(t.yazar)} <span class="w">· ${once(t.zaman)}${t.yanit?" · yanıt":""}${t.begeni?` · ♥ ${fmt(t.begeni)}`:""}${t.yanitSay?` · ${t.yanitSay} yanıt`:""}</span>${t.cevaplandi?` <span class="st ok">cevapladın</span>`:""}</div>
+    <p>${esc(t.metin)}</p>
+    ${t.vid?`<a class="lk" target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=${t.vid}${t.id&&!t.yanit?"&lc="+encodeURIComponent(t.id):""}">YouTube'da yanıtla ↗</a><a class="lk" target="_blank" rel="noopener" href="https://studio.youtube.com/video/${t.vid}/comments">Studio ↗</a>`:""}</div></div>`;
+}
+
+/* ===== ANALİZ ===== */
+function grupOrt(L,anahtar){ const g={}; for(const v of L){ const k=anahtar(v); if(k==null) continue; (g[k]=g[k]||[]).push(v.izlenme); } return g; }
+const ort=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+function icgoruler(){
+  const V=S.videolar, sh=V.filter(v=>v.shorts), I=[];
+  if(V.length<5) return I;
+  const kanalOrt=ort(sh.length>=5?sh.map(v=>v.izlenme):V.map(v=>v.izlenme)); const B=sh.length>=5?sh:V;
+  // gün
+  const gg=grupOrt(B,v=>new Date(v.tarih).getDay()); const ge=Object.entries(gg).filter(x=>x[1].length>=2).map(([k,a])=>[+k,ort(a)]).sort((a,b)=>b[1]-a[1]);
+  if(ge.length>=3 && ge[0][1]>kanalOrt*1.15) I.push(`<div class="ins"><div class="e">📅</div><p><b>${GUNLER[ge[0][0]]}</b> günü paylaştığın videolar ortalamanın <b>${(ge[0][1]/kanalOrt).toLocaleString("tr-TR",{maximumFractionDigits:1})} katı</b> izlenmiş.</p></div>`);
+  // saat
+  const sb=h=>h<6?"00–06":h<9?"06–09":h<12?"09–12":h<15?"12–15":h<18?"15–18":h<21?"18–21":"21–24";
+  const sg=grupOrt(B,v=>sb(new Date(v.tarih).getHours())); const se=Object.entries(sg).filter(x=>x[1].length>=2).map(([k,a])=>[k,ort(a)]).sort((a,b)=>b[1]-a[1]);
+  if(se.length>=2 && se[0][1]>kanalOrt*1.15) I.push(`<div class="ins"><div class="e">🕒</div><p>Saat <b>${se[0][0]}</b> arası paylaşılan videolar en çok izlenenler (ortalamanın ${(se[0][1]/kanalOrt).toLocaleString("tr-TR",{maximumFractionDigits:1})} katı).</p></div>`);
+  // başlık
+  const bt=baslikTestleri(B,kanalOrt).filter(x=>x.n>=3&&x.k>=1.2).sort((a,b)=>b.k-a.k);
+  if(bt.length) I.push(`<div class="ins"><div class="e">✍️</div><p>Başlığında <b>${bt[0].ad}</b> olan videolar ortalamanın <b>${bt[0].k.toLocaleString("tr-TR",{maximumFractionDigits:1})} katı</b> izlenmiş (${bt[0].n} video).</p></div>`);
+  // süre
+  if(sh.length>=6){ const db=s=>s<20?"20 sn altı":s<30?"20–30 sn":s<40?"30–40 sn":s<50?"40–50 sn":s<60?"50–60 sn":"1 dk üstü"; const dg=grupOrt(sh,v=>db(v.sure)); const de=Object.entries(dg).filter(x=>x[1].length>=2).map(([k,a])=>[k,ort(a)]).sort((a,b)=>b[1]-a[1]);
+    if(de.length>=2) I.push(`<div class="ins"><div class="e">⏱️</div><p>En iyi giden Shorts süresi: <b>${de[0][0]}</b> (ortalama ${fmt(Math.round(de[0][1]))} izlenme).</p></div>`); }
+  // patlayan
+  const p=V.filter(v=>v.kat>=3).length; if(p) I.push(`<div class="ins"><div class="e">🔥</div><p><b>${p} video</b> kanal ortalamasının 3 katından fazla izlenmiş. Bunların konularından devam videosu yapmak iyi bir fikir olabilir.</p></div>`);
+  // sıklık
+  const s30=V.filter(v=>Date.now()-new Date(v.tarih)<30*GUN).length; if(s30) I.push(`<div class="ins"><div class="e">📆</div><p>Son 30 günde <b>${s30} video</b> yükledin (günde ortalama ${(s30/30).toLocaleString("tr-TR",{maximumFractionDigits:1})}).</p></div>`);
+  return I;
+}
+function baslikTestleri(B,kanalOrt){
+  const T=[
+    ["soru işareti (?)", v=>v.baslik.includes("?")],
+    ["emoji", v=>/\p{Extended_Pictographic}/u.test(v.baslik)],
+    ['"olsaydın / olsaydı"', v=>/olsayd|doğsayd|yaşasayd|olmasayd/i.test(v.baslik)],
+    ['"neden / nasıl"', v=>/neden|nasıl|niye/i.test(v.baslik.toLocaleLowerCase("tr-TR"))],
+    ["sayı", v=>/\d/.test(v.baslik)],
+    ["#etiket", v=>/#\S/.test(v.baslik)],
+    ["kısa başlık (40 harf altı)", v=>v.baslik.length<40]
+  ];
+  return T.map(([ad,f])=>{ const a=B.filter(f), b=B.filter(v=>!f(v)); return {ad,n:a.length,m:b.length,o:ort(a.map(v=>v.izlenme)),k:ort(a.map(v=>v.izlenme))/(ort(b.map(v=>v.izlenme))||1)}; });
+}
+function vAnaliz(){
+  const V=S.videolar, sh=V.filter(v=>v.shorts), uz=V.filter(v=>!v.shorts);
+  const B=sh.length>=5?sh:V, kanalOrt=ort(B.map(v=>v.izlenme));
+  let h=`<div class="ttl"><h2>📊 Analiz</h2><p>${B===sh?"Shorts videoların":"Tüm videoların"} üzerinden hesaplanır. Az videoda sonuçlar yanıltıcı olabilir, yön göstermesi için kullan.</p></div>`;
+  h+=`<div class="card" style="margin-bottom:14px"><h3>💡 İçgörüler</h3>${icgoruler().join("")||`<div class="empty">İçgörü için en az 5 video gerekiyor.</div>`}</div>`;
+  // shorts vs uzun
+  const kart=(ad,L,c)=>`<div class="card"><h3>${ad}<span class="sp"></span><small>${L.length} video</small></h3>${L.length?hbar([{l:"Ortalama izlenme",v:ort(L.map(v=>v.izlenme)),vl:fmt(Math.round(ort(L.map(v=>v.izlenme)))),c},{l:"Ortalama beğeni",v:ort(L.map(v=>v.begeni)),vl:fmt(Math.round(ort(L.map(v=>v.begeni)))),c},{l:"Ortalama etkileşim",v:ort(L.map(v=>v.oran)),vl:yuzde(ort(L.map(v=>v.oran))),c}]):`<div class="empty">Bu türde video yok</div>`}</div>`;
+  h+=`<div class="grid g2">${kart("📱 Shorts",sh,"")}${kart("🎞️ Uzun videolar",uz,"b")}</div>`;
+  // gün & saat
+  const gg=grupOrt(B,v=>new Date(v.tarih).getDay());
+  const gD=[1,2,3,4,5,6,0].map(d=>({l:GUNLER[d].slice(0,3),v:ort(gg[d]||[]),vl:gg[d]?kisa(ort(gg[d])):"–",t:`${GUNLER[d]} · ${(gg[d]||[]).length} video`,c:(gg[d]||[]).length<2?"#3A4150":"#FF4D47"}));
+  const saat=["00–06","06–09","09–12","12–15","15–18","18–21","21–24"], sb=x=>x<6?0:x<9?1:x<12?2:x<15?3:x<18?4:x<21?5:6;
+  const sg=grupOrt(B,v=>sb(new Date(v.tarih).getHours()));
+  const sD=saat.map((l,i)=>({l,v:ort(sg[i]||[]),vl:sg[i]?kisa(ort(sg[i])):"–",t:`${l} · ${(sg[i]||[]).length} video`,c:(sg[i]||[]).length<2?"#3A4150":"#5B8CFF"}));
+  h+=`<div class="grid g2" style="margin-top:14px"><div class="card"><h3>📅 Paylaşım gününe göre ortalama izlenme</h3>${barChart(gD,{h:190})}<div class="legend">Gri çubuklar: o günde 2'den az video var, güvenilir değil.</div></div>
+    <div class="card"><h3>🕒 Paylaşım saatine göre ortalama izlenme</h3>${barChart(sD,{h:190})}<div class="legend">Saatler bu bilgisayarın saat dilimine göre.</div></div></div>`;
+  // başlık testleri
+  const bt=baslikTestleri(B,kanalOrt).filter(x=>x.n>=1&&x.m>=1);
+  h+=`<div class="grid g2" style="margin-top:14px"><div class="card"><h3>✍️ Başlık analizi</h3>
+    <div class="small muted" style="margin-bottom:6px">Bu özelliği taşıyan başlıklar, taşımayanlara göre kaç kat izlenmiş:</div>
+    ${bt.length?hbar(bt.sort((a,b)=>b.k-a.k).map(x=>({l:`${x.ad} <span class="tiny muted">(${x.n} video)</span>`,v:x.k,vl:x.k.toLocaleString("tr-TR",{maximumFractionDigits:2})+"x",c:x.k>=1?"g":"",n:`ortalama ${fmt(Math.round(x.o))} izlenme`}))):`<div class="empty">Yeterli veri yok</div>`}</div>`;
+  // süre
+  const db=["20 sn altı","20–30 sn","30–40 sn","40–50 sn","50–60 sn","1–3 dk"], dbi=s=>s<20?0:s<30?1:s<40?2:s<50?3:s<60?4:5;
+  const dg=grupOrt(sh,v=>dbi(v.sure));
+  h+=`<div class="card"><h3>⏱️ Shorts süresine göre ortalama izlenme</h3>${sh.length?barChart(db.map((l,i)=>({l,v:ort(dg[i]||[]),vl:dg[i]?kisa(ort(dg[i])):"–",t:`${l} · ${(dg[i]||[]).length} video`,c:(dg[i]||[]).length<2?"#3A4150":"#B07CFF"})),{h:200}):`<div class="empty">Shorts yok</div>`}</div></div>`;
+  // yükleme takvimi
+  const sayim={}; for(const v of V){ const k=gunKey(v.tarih); sayim[k]=(sayim[k]||0)+1; }
+  const bugun=new Date(); bugun.setHours(0,0,0,0); const bas=new Date(haftaBasi().getTime()-15*7*GUN);
+  let hm=""; for(let d=new Date(bas); d<=bugun; d=new Date(d.getTime()+GUN)){ const n=sayim[gunKey(d)]||0; hm+=`<div class="${n>=3?"l3":n===2?"l2":n===1?"l1":""}" title="${d.toLocaleDateString("tr-TR")} · ${n} video"></div>`; }
+  const s30=V.filter(v=>Date.now()-new Date(v.tarih)<30*GUN).length;
+  const trh=[...V].map(v=>new Date(v.tarih).getTime()).sort((a,b)=>b-a); let bosluk=0; for(let i=1;i<Math.min(trh.length,60);i++) bosluk=Math.max(bosluk,trh[i-1]-trh[i]);
+  h+=`<div class="card" style="margin-top:14px"><h3>🗓️ Yükleme takvimi<span class="sp"></span><small>son 16 hafta</small></h3><div style="display:flex;gap:8px"><div class="tiny muted" style="display:grid;grid-template-rows:repeat(7,14px);gap:4px">${["Pzt","","Çar","","Cum","","Paz"].map(x=>`<span style="line-height:14px">${x}</span>`).join("")}</div><div class="hm">${hm}</div></div>
+    <div class="legend">Az <i style="background:var(--card3)"></i><i style="background:#5A2A2A"></i><i style="background:#A83A36"></i><i style="background:var(--red)"></i> Çok · Son 30 günde ${s30} video · en uzun ara ${Math.round(bosluk/GUN*10)/10} gün</div></div>`;
+  return h;
+}
+
+/* ===== AYARLAR ===== */
+function vAyarlar(){
+  const g=gecmisListe();
+  return `<div class="ttl"><h2>⚙️ Ayarlar</h2></div><div class="card">
+    <div class="row-set"><div class="lb"><b>Otomatik güncelleme</b><small>Panel açık kaldığı sürece verileri yeniler. Yeni yorumlar her dakika ayrıca kontrol edilir.</small></div>
+      <select id="sAralik">${[[0,"Kapalı"],[1,"Her 1 dakika"],[5,"Her 5 dakika"],[10,"Her 10 dakika"],[15,"Her 15 dakika"],[30,"Her 30 dakika"]].map(([v,t])=>`<option value="${v}" ${S.ayar.aralik==v?"selected":""}>${t}</option>`).join("")}</select></div>
+    <div class="row-set"><div class="lb"><b>Bildirim sesi</b><small>Yeni yorum gelince ve hedefe ulaşınca kısa bir ses çalar.</small></div>
+      <select id="sSes"><option value="1" ${S.ayar.ses?"selected":""}>Açık</option><option value="0" ${!S.ayar.ses?"selected":""}>Kapalı</option></select> <button data-act="sesDene">Dene</button></div>
+    <div class="row-set"><div class="lb"><b>Verileri dışa aktar</b><small>Tüm videoların istatistiklerini Excel'de açılabilen CSV dosyası olarak indir.</small></div><button data-act="csv">⬇ CSV indir</button></div>
+    <div class="row-set"><div class="lb"><b>Günlük kayıt</b><small>${g.length} günlük kayıt var${g.length?` (ilk: ${tarih(g[0].t)})`:""}. Kayıtlar sadece bu tarayıcıda saklanır.</small></div><button data-act="gecmisSil">Kayıtları sıfırla</button></div>
+    <div class="row-set"><div class="lb"><b>Hedefler ve rozetler</b><small>Hedeflerini ve açtığın rozetleri sıfırlar.</small></div><button data-act="hedefSil">Sıfırla</button></div>
+    <div class="row-set"><div class="lb"><b>Günlük API kullanımı</b><small>Google günde 10.000 birim ücretsiz verir. Bu ayarlarla panel günde yaklaşık <b>${fmt(Math.round((S.ayar.aralik?1440/S.ayar.aralik*(3+Math.ceil(S.videolar.length/50)*2):0)+1440))}</b> birim harcar (panel tüm gün açık kalırsa).</small></div></div>
+  </div>
+  <div class="card" style="margin-top:14px"><h3>🔑 Kanal ve API anahtarı</h3>
+    <div class="row-set"><div class="lb"><b>Kanal</b><small>${esc(KANAL||"–")}</small></div></div>
+    <div class="row-set"><div class="lb"><b>API anahtarı</b><small>${API_ANAHTARI?esc(API_ANAHTARI.slice(0,4))+"••••••••••"+esc(API_ANAHTARI.slice(-4)):"–"}</small></div><button data-act="kurulumDegis">Değiştir</button></div>
+    <div class="row-set"><div class="lb"><b>Bu tarayıcıdan çıkış</b><small>Anahtarı, kanalı ve tüm kayıtları (hedefler, geçmiş) bu tarayıcıdan siler.</small></div><button data-act="hepsiniSil">Her şeyi sil</button></div>
+  </div>
+  <div class="card" style="margin-top:14px"><h3>🔒 Güvenlik</h3><div class="small muted">Panel şifreni kullanmaz ve hesabına giriş yapmaz; YouTube'daki herkese açık verileri sadece okur. API anahtarın sadece bu tarayıcıda saklanır ve yalnızca Google'ın API'sine gönderilir. Ortak kullanılan bir bilgisayardaysan işin bitince "Her şeyi sil"e bas. Anahtar ele geçerse Google Cloud → Kimlik Bilgileri'nden silip yenisini oluştur.</div></div>`;
+}
+
+/* ---------- etkileşim ---------- */
+function baglaGenel(){
+  const v=$("view");
+  v.querySelectorAll("[data-vid]").forEach(e=>e.onclick=()=>detay(e.dataset.vid));
+  v.querySelectorAll(".clk").forEach(e=>e.onclick=()=>detay(e.dataset.id));
+  v.querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{ S.v.filtre=b.dataset.f; ciz(false); });
+  v.querySelectorAll("[data-yf]").forEach(b=>b.onclick=()=>{ S.yf=b.dataset.yf; ciz(false); });
+  v.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{ S.hedefler=S.hedefler.filter(h=>String(h.id)!==b.dataset.del); yaz(K.hedef,S.hedefler); ciz(false); });
+  v.querySelectorAll("[data-hizli]").forEach(b=>b.onclick=()=>{ const [m,n]=b.dataset.hizli.split(":"); hedefEkle(m,+n,null); });
+  v.querySelectorAll("[data-act]").forEach(b=>b.onclick=()=>eylem(b.dataset.act));
+  if($("sirala")) $("sirala").onchange=e=>{ S.v.sirala=e.target.value; listeCiz(); bagListe(); };
+  if($("ara")) $("ara").oninput=e=>{ S.v.ara=e.target.value; listeCiz(); bagListe(); };
+  if($("sAralik")) $("sAralik").onchange=e=>{ S.ayar.aralik=+e.target.value; yaz(K.ayar,S.ayar); zamanlayici(); ciz(false); };
+  if($("sSes")) $("sSes").onchange=e=>{ S.ayar.ses=e.target.value==="1"; yaz(K.ayar,S.ayar); };
+  if($("liste")){ listeCiz(); bagListe(); }
+}
+function bagListe(){ $("liste")?.querySelectorAll("[data-vid]").forEach(e=>e.onclick=()=>detay(e.dataset.vid)); }
+function hedefEkle(m,n,son){
+  if(!(n>0)){ toast("Hedef eklenemedi","Geçerli bir sayı gir."); return; }
+  S.hedefler=S.hedefler||[]; S.hedefler.push({id:Date.now(),metrik:m,hedef:n,son:son||null,olus:Date.now()}); yaz(K.hedef,S.hedefler);
+  toast("🎯 Hedef eklendi",`${fmt(n)} ${METRIK[m].ad.toLocaleLowerCase("tr-TR")}`); rozetKontrol(true); ciz(false);
+}
+function eylem(a){
+  if(a==="yeniGoster") return yeniYorumlariGoster();
+  if(a==="okundu") return okunduSay();
+  if(a==="csv") return csvIndir();
+  if(a==="kurulumDegis") return kurulumGoster(true);
+  if(a==="hepsiniSil"){ if(confirm("Anahtar, kanal ve tüm kayıtlar bu tarayıcıdan silinsin mi?")){ Object.values(K).forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} }); location.hash=""; location.reload(); } return; }
+  if(a==="sesDene"){ const s=S.ayar.ses; S.ayar.ses=true; bip(); S.ayar.ses=s; return; }
+  if(a==="hEkle") return hedefEkle($("hMetrik").value, +$("hHedef").value, $("hSon").value||null);
+  if(a==="gecmisSil"){ if(confirm("Günlük kayıtlar silinsin mi? Grafikler sıfırdan başlar.")){ S.gecmis={}; yaz(K.gecmis,{}); gecmisKaydet(); ciz(false); } return; }
+  if(a==="hedefSil"){ if(confirm("Hedefler ve rozetler sıfırlansın mı?")){ S.hedefler=null; S.rozetler=null; yaz(K.hedef,null); yaz(K.rozet,null); hedefIlkKurulum(); rozetKontrol(false); ciz(false); } return; }
+}
+function csvIndir(){
+  const q=x=>`"${String(x).replace(/"/g,'""')}"`;
+  const satir=[["Başlık","Tür","Yayın tarihi","Süre (sn)","İzlenme","Beğeni","Yorum","Etkileşim %","Performans (x)","Günlük ort. izlenme","Bağlantı"].map(q).join(";")];
+  for(const v of [...S.videolar].sort((a,b)=>new Date(b.tarih)-new Date(a.tarih))) satir.push([v.baslik,v.shorts?"Shorts":"Uzun",new Date(v.tarih).toLocaleString("tr-TR"),v.sure,v.izlenme,v.begeni,v.yorum,(v.oran*100).toFixed(2).replace(".",","),v.kat.toFixed(2).replace(".",","),Math.round(v.gunluk),"https://youtu.be/"+v.id].map(q).join(";"));
+  const blob=new Blob(["﻿"+satir.join("\r\n")],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`kanal_videolar_${gunKey(Date.now())}.csv`; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
+  toast("⬇ CSV hazırlandı","Dosya İndirilenler klasörüne kaydedildi.");
+}
+
+/* ---------- modallar ---------- */
+async function detay(id){
+  const v=S.videolar.find(x=>x.id===id); if(!v) return;
+  const L=gecmisListe().filter(x=>x.v&&x.v[id]!=null);
+  let gr="";
+  if(L.length>=2){ const D=[]; for(let i=1;i<L.length;i++) D.push({l:new Date(L[i].t).toLocaleDateString("tr-TR",{day:"numeric",month:"numeric"}),v:Math.max(0,L[i].v[id]-L[i-1].v[id]),c:v.shorts?"#FF4D47":"#5B8CFF"});
+    gr=`<h3 style="font-size:15px;margin-top:16px">📈 Günlük yeni izlenme</h3>${barChart(D.slice(-30),{h:150})}`; }
+  $("box").innerHTML=`<button class="x" data-x>×</button>
+    <img class="big" src="${esc(v.kapakBuyuk||v.kapak)}" alt="">
+    <h3>${esc(v.baslik)}${perfEtiket(v)}</h3>
+    <div class="small muted"><span class="tag ${v.shorts?"s":"u"}">${v.shorts?"SHORTS":"UZUN"}</span>${tarih(v.tarih)} · ${once(v.tarih)} · ${sureYaz(v.sure)}</div>
+    <div class="mini"><div><div class="l">İzlenme</div><div class="v">${fmt(v.izlenme)}</div></div><div><div class="l">Beğeni</div><div class="v">${fmt(v.begeni)}</div></div>
+      <div><div class="l">Yorum</div><div class="v">${v.yorumKapali?"–":fmt(v.yorum)}</div></div><div><div class="l">Etkileşim</div><div class="v">${yuzde(v.oran,2)}</div></div>
+      <div><div class="l">Performans</div><div class="v">${v.kat.toLocaleString("tr-TR",{maximumFractionDigits:1})}x</div></div><div><div class="l">Günlük ort.</div><div class="v">${fmt(Math.round(v.gunluk))}</div></div>
+      <div><div class="l">Beğeni oranı</div><div class="v">${v.izlenme?yuzde(v.begeni/v.izlenme,2):"–"}</div></div><div><div class="l">Sıralama</div><div class="v">#${[...S.videolar].sort((a,b)=>b.izlenme-a.izlenme).findIndex(x=>x.id===id)+1}</div></div></div>
+    <div class="links"><a href="https://www.youtube.com/watch?v=${v.id}" target="_blank" rel="noopener">YouTube'da aç ↗</a><a href="https://studio.youtube.com/video/${v.id}/analytics" target="_blank" rel="noopener">Studio analizi ↗</a></div>
+    ${gr}<h3 style="font-size:15px;margin-top:18px">💬 Son yorumlar</h3><div id="yorumlar" class="small">Yükleniyor…</div>`;
+  $("modal").classList.add("on"); $("box").querySelector("[data-x]").onclick=kapat;
+  if(v.yorumKapali||!v.yorum){ $("yorumlar").textContent=v.yorumKapali?"Bu videoda yorumlar kapalı.":"Henüz yorum yok."; return; }
+  try{ const c=await api("commentThreads",{part:"snippet",videoId:id,maxResults:20,order:"time",textFormat:"plainText"});
+    $("yorumlar").innerHTML=(c.items||[]).map(t=>{const s=t.snippet.topLevelComment.snippet; return yorumHtml({vid:"",yazar:s.authorDisplayName,foto:s.authorProfileImageUrl,metin:s.textDisplay,zaman:s.publishedAt,begeni:s.likeCount,yanitSay:t.snippet.totalReplyCount});}).join("")||"Henüz yorum yok.";
+  }catch(e){ $("yorumlar").textContent="Yorumlar alınamadı: "+e.message; }
+}
+function yeniYorumlariGoster(){
+  const G={}; for(const x of S.yeniler) (G[x.vid]=G[x.vid]||[]).push(x);
+  let h=""; for(const [vid,L] of Object.entries(G)){ const v=S.videolar.find(z=>z.id===vid);
+    h+=`<div class="nv"><h4>${esc(v?v.baslik:(vid?"Video":"Kanal"))} <span class="yeni">+${L.length}</span></h4>`+L.map(x=>yorumHtml({...x,vid:""})).join("")
+      +(vid?`<div class="links"><a href="https://www.youtube.com/watch?v=${vid}" target="_blank" rel="noopener">YouTube'da aç ↗</a><a href="https://studio.youtube.com/video/${vid}/comments" target="_blank" rel="noopener">Studio'da yanıtla ↗</a></div>`:"")+`</div>`; }
+  $("box").innerHTML=`<button class="x" data-x>×</button><h3 style="margin-top:0">🔔 ${S.yeniler.length} yeni yorum</h3><div class="small muted">Son "okundu" işaretinden bu yana gelenler</div>${h||`<div class="empty">Yeni yorum yok 👌</div>`}
+    ${S.yeniler.length?`<div style="margin-top:16px"><button class="primary" data-ok>✓ Hepsini okundu say</button></div>`:""}`;
+  $("modal").classList.add("on"); $("box").querySelector("[data-x]").onclick=kapat; const ok=$("box").querySelector("[data-ok]"); if(ok) ok.onclick=okunduSay;
+}
+function kapat(){ $("modal").classList.remove("on"); }
+$("modal").onclick=e=>{ if(e.target.id==="modal") kapat(); };
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") kapat(); });
+
+/* ---------- kurulum / hata ---------- */
+function kurulumGoster(degistir){
+  $("guncel").textContent=degistir?"Ayarları değiştir":"Kurulum gerekiyor";
+  $("view").innerHTML=`<div class="msg"><h2>${degistir?"Kanal ve anahtar 🔑":"Hoş geldin! 👋"}</h2>
+    <p>${degistir?"Yeni bilgileri girip kaydet.":"Panel, YouTube'un resmi API'si ile çalışır. Başlamak için Google'dan ücretsiz bir <b>API anahtarı</b> alman gerekiyor (yaklaşık 10 dakika, kredi kartı gerekmez)."}</p>
+    ${degistir?"":`<p>Adım adım anlatım: <a href="https://github.com/FALCONcompany19/kanal-paneli#kurulum" target="_blank" rel="noopener"><b>Kurulum kılavuzu ↗</b></a></p>`}
+    <div style="display:grid;gap:12px;max-width:520px;margin-top:14px">
+      <label class="small"><b>YouTube kanalın</b><br><input id="kKanal" placeholder="@kanaladin  ya da kanal linki" value="${esc(KANAL)}" style="width:100%;margin-top:6px" autocomplete="off"></label>
+      <label class="small"><b>API anahtarın</b><br><input id="kAnahtar" type="password" placeholder="AIza… ile başlar" value="${esc(API_ANAHTARI)}" style="width:100%;margin-top:6px" autocomplete="off" spellcheck="false"></label>
+      <div><button class="primary" id="kKaydet">Kaydet ve başlat</button>${degistir?` <button id="kVazgec">Vazgeç</button>`:""}</div>
+      <div class="tiny muted">🔒 Bilgilerin sadece bu tarayıcıda saklanır. Panel hiçbir sunucuya veri göndermez; istekler doğrudan Google'a gider.</div>
+    </div></div>`;
+  $("kKaydet").onclick=()=>{
+    const a=$("kAnahtar").value.trim(), k=kanalCoz($("kKanal").value);
+    if(!k){ toast("Kanal eksik","Kanalının @kullanıcı adını ya da linkini yaz."); return; }
+    if(!/^AIza[\w-]{30,}$/.test(a)){ toast("Anahtar hatalı görünüyor","API anahtarı \"AIza\" ile başlar. Eksik kopyalanmadığından emin ol."); return; }
+    if(k!==KANAL){ [K.kayit,K.gorulen,K.gecmis,K.hedef,K.rozet].forEach(x=>{ try{ localStorage.removeItem(x); }catch(e){} }); }
+    yaz(K.anahtar,a); yaz(K.kanal,k); location.hash=""; location.reload();
+  };
+  if(degistir) $("kVazgec").onclick=()=>ciz(false);
+}
+function hataGoster(e){
+  const s=e.sebep||""; let ne="Beklenmeyen bir hata oluştu.", coz="Bir süre sonra <b>Yenile</b>'ye bas. Sorun sürerse <a href=\"https://github.com/FALCONcompany19/kanal-paneli/issues\" target=\"_blank\" rel=\"noopener\">GitHub'da bildir</a> (anahtarını paylaşma).";
+  if(s==="keyInvalid"||/API key not valid/i.test(e.message)){ ne="API anahtarı geçersiz."; coz="<b>Ayarlar → API anahtarı → Değiştir</b> bölümünden anahtarı kontrol et; eksik kopyalanmış olabilir."; }
+  else if(s==="accessNotConfigured"||/has not been used|is disabled/i.test(e.message)){ ne="YouTube Data API bu projede açık değil."; coz="Kurulum kılavuzundaki <b>2. adımı</b> yap (YouTube Data API v3'ü etkinleştir). Açtıktan sonra birkaç dakika beklemek gerekebilir."; }
+  else if(s==="quotaExceeded"||s==="dailyLimitExceeded"){ ne="Bugünkü ücretsiz kullanım hakkı doldu."; coz="Kota her gün sıfırlanır (Türkiye saatiyle 10:00–11:00 civarı). Ayarlar'dan otomatik güncelleme aralığını uzatabilirsin."; }
+  else if(s==="ipRefererBlocked"||s==="forbidden"){ ne="Anahtar kısıtlaması bu isteği engelledi."; coz="Google Cloud'da anahtarın <b>API kısıtlaması</b> 'YouTube Data API v3' olmalı. <b>Web sitesi kısıtlaması</b> koyduysan bu sayfanın adresi (<code>"+esc(location.origin)+"/*</code>) listede olmalı."; }
+  else if(s==="kanalYok"){ ne=e.message; coz="<b>Ayarlar → Değiştir</b> bölümünden kanal adını kontrol et (ör. <code>@kanaladin</code>). Kanal linkini de yapıştırabilirsin."; }
+  else if(e instanceof TypeError){ ne="YouTube'a bağlanılamadı."; coz="Önce internet bağlantını kontrol et. Paneli bilgisayarından dosya olarak açtıysan, kılavuzdaki gibi <b>Paneli_Ac.bat</b> ile ya da GitHub'daki site adresinden aç."; }
+  if(s==="kanalYok"){ $("guncel").textContent="Hata"; $("view").innerHTML=`<div class="msg err"><h2>⚠️ ${esc(ne)}</h2><p>${coz}</p><p><button class="primary" id="hDegis">Kanalı değiştir</button></p></div>`; $("hDegis").onclick=()=>kurulumGoster(true); return; }
+  $("guncel").textContent="Hata";
+  $("view").innerHTML=`<div class="msg err"><h2>⚠️ ${esc(ne)}</h2><p>${coz}</p><p><button id="hDegis2">Kanal / anahtar ayarları</button></p><p class="tiny muted">Teknik detay: ${esc(e.message)}</p></div>`;
+  $("hDegis2").onclick=()=>kurulumGoster(true);
+}
+
+/* ---------- başlat ---------- */
+let tVeri=null;
+function zamanlayici(){ clearInterval(tVeri); if(S.ayar.aralik>0) tVeri=setInterval(()=>yukle(true), S.ayar.aralik*60000); }
+window.addEventListener("hashchange",()=>{ if(S.kanal) ciz(true); else navCiz(); });
+$("yenile").onclick=()=>yukle(false);
+$("zil").onclick=()=>{ if(S.kanal) yeniYorumlariGoster(); };
+navCiz(); zilCiz();
+yukle(false);
+zamanlayici();
+setInterval(()=>{ if(S.kanal) baslikYaz(); },30000);
+setInterval(()=>{ if(typeof API_ANAHTARI!=="undefined" && API_ANAHTARI.trim()) yorumKontrol(); },60000);
+</script>
+</body>
+</html>

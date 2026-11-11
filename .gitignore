@@ -1,0 +1,5 @@
+# Kişisel ayar / anahtar dosyaları asla yüklenmesin
+ayarlar.js
+*.key
+.env
+*.local.*
